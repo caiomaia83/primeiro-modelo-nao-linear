@@ -1,0 +1,75 @@
+import pandas as pd
+
+uri = "https://gist.githubusercontent.com/guilhermesilveira/12291c548acaf544596795709020e3db/raw/325bdef098bd9cbc2189215b7e32e22f437f29f3/projetos.csv"
+#le os dados do url e os coloca na variavel dados
+dados = pd.read_csv(uri)
+
+#mostra a cabeca dos dados
+dados.head()
+
+dados["finalizado"] = dados["nao_finalizado"].map({0: 1, 1: 0})
+dados.head()
+
+import seaborn as sns
+
+dados = dados.query("horas_esperadas > 0")
+dados.head()
+
+
+x = dados[["horas_esperadas", "preco"]]
+y = dados["finalizado"]
+
+from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+
+SEED = 3284
+
+raw_treinox, raw_testex, treinoy, testey = train_test_split(x, y, random_state = SEED, stratify = y)
+
+#apos separado o treino e o teste vamos aplicar o escalador
+scaler = StandardScaler()
+scaler.fit(raw_treinox)
+treinox = scaler.transform(raw_treinox)
+testex = scaler.transform(raw_testex)
+
+
+modelo = SVC(gamma = 'auto')
+modelo.fit(treinox, treinoy)
+
+
+previsoes = modelo.predict(testex)
+
+acuracia = accuracy_score(testey, previsoes) * 100
+print(f"a acuracia eh de {acuracia:.2f}%")
+
+datacol1 = testex[:, 0]    #dividimos em duas colunas
+datacol2 = testex[:, 1]    #1 e horas esperadas e segunda e preco
+
+x_min = datacol1.min()
+x_max = datacol1.max()
+y_min = datacol2.min()
+y_max = datacol2.max()
+
+import numpy as np
+
+pixels = 100
+
+eixox = np.arange(x_min, x_max, (x_max - x_min) / pixels)
+eixoy = np.arange(y_min, y_max, (y_max - y_min) / pixels)
+
+xx, yy = np.meshgrid(eixox, eixoy)
+
+pontos = np.c_[xx.ravel(), yy.ravel()]
+
+z = modelo.predict(pontos)
+
+z = z.reshape(xx.shape)
+
+import matplotlib.pyplot as plt
+
+plt.contourf(xx, yy, z)
+plt.scatter(datacol1, datacol2, c = testey, s = 1)
+
+
